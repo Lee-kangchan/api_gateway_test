@@ -1,4 +1,4 @@
-package com.example.apt_gateway_test2
+package com.example.apt_gateway_test
 
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest

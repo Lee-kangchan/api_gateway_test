@@ -1,1 +1,1 @@
-rootProject.name = "apt_gateway_test2"
+rootProject.name = "apt_gateway_test"
