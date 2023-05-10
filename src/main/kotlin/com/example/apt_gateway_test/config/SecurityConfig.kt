@@ -29,7 +29,8 @@ class SecurityConfig(): WebSecurityConfigurerAdapter() {
     override fun configure(http: HttpSecurity) {
         http
             .authorizeRequests()
-            .antMatchers("/admin").hasAuthority("ADMIN")
+            .antMatchers("/dosa").hasAuthority("dosa")
+            .antMatchers("/user").hasAuthority("user")
             .anyRequest().authenticated()
             .and()
             .addFilterBefore(TokenAuthentication(), UsernamePasswordAuthenticationFilter::class.java)
