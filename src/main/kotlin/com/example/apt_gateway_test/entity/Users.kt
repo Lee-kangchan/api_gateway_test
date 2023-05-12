@@ -1,13 +1,12 @@
 package com.example.apt_gateway_test.entity
 
-import org.springframework.context.annotation.Primary
 import javax.persistence.Entity
 import javax.persistence.GeneratedValue
 import javax.persistence.GenerationType
 import javax.persistence.Id
 
 @Entity
-data class User(
+data class Users(
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

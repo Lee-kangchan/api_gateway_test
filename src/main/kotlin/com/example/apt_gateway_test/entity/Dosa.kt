@@ -1,6 +1,14 @@
 package com.example.apt_gateway_test.entity
 
+import javax.persistence.Entity
+import javax.persistence.GeneratedValue
+import javax.persistence.GenerationType
+import javax.persistence.Id
+
+@Entity
 data class Dosa(
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     val seq: Long?,
     val dosaId: String?,
     val pw: String?,
@@ -29,7 +37,7 @@ data class Dosa(
     val famousScore: Double?,
     val reviewCnt: Int?,
     val cnslCnt: Int?,
-    val reserveStatus: Int?,
+    val reserveStatus: String?,
     val privacyAgreeYn: String?,
     val privacyAgreeDt: String?,
     val registrationNum: String?,
