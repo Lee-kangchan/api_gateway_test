@@ -1,75 +1,55 @@
 package com.example.apt_gateway_test.filter
 
+import com.example.apt_gateway_test.dto.TokenDecrypt
 import com.example.apt_gateway_test.entity.Dosa
-import com.example.apt_gateway_test.entity.DosaToken
-import com.example.apt_gateway_test.entity.User
-import com.example.apt_gateway_test.repository.DosaRepository
-import com.example.apt_gateway_test.repository.DosaTokenRepository
-import com.example.apt_gateway_test.repository.TokenRepository
-import com.example.apt_gateway_test.repository.UserRepository
-import com.example.apt_gateway_test.util.TokenUtil
+import com.example.apt_gateway_test.entity.Users
+import com.example.apt_gateway_test.service.TokenService
+import org.slf4j.LoggerFactory
+import org.springframework.context.annotation.Configuration
 import org.springframework.web.filter.OncePerRequestFilter
 import javax.servlet.FilterChain
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
+@Configuration
 class TokenCheckFilter(
-    val userRepository: UserRepository,
-    val dosaRepository: DosaRepository,
-    val tokenRepository: TokenRepository,
-    val dosaTokenRepository: DosaTokenRepository
+    val tokenService: TokenService
 ) : OncePerRequestFilter(){
+    companion object  {
+
+        val log = LoggerFactory.getLogger(TokenCheckFilter::class.java) ?: throw IllegalStateException("log가 존재하지 않습니다!")
+    }
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, filterChain: FilterChain) {
 
-        val token = request.getHeader("token")
-        val tokenDec: String? = TokenUtil.decryptAES_DB(token)
-        if(tokenDec != null) {
+            val tokenDecrypt : TokenDecrypt = tokenService.tokenDecrypt(request.getHeader("token")) ?: TokenDecrypt();
 
-            val tokenArr = tokenDec.split("_".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-            val token_id = tokenArr[0]
-            val tokenStart = tokenArr[1]
-            val tokenType = tokenArr[2]
-
-            if (tokenType === "user") {
-
-                val user : User? = userRepository.findByUserId(token_id)
-                if (user == null || user.seq === 0L) {
-                    filterChain.doFilter(request, response)
-                }
-                else if (user.status == "delete" || user.status == "dormant") {
-                    filterChain.doFilter(request, response)
-                }
-
+            log.info("token check")
+            log.info(tokenDecrypt.toString())
+            if (tokenDecrypt.tokenType == "user") {
+                val tokenUser : Users? = tokenService.userTokenCheck(tokenDecrypt);
+                log.info("user token check")
                 // TODO Token 유효기간 재설정하는 부분 추가해야함
-
 //                val parameters: Map<String, Any> = expandToken(userVo.getSeq(), token)
 //                loginMapper.insertToken(parameters)
 //                loginMapper.updateLastLoginDate(userVo.getSeq())
 //                userVo.setMobile(CommonUtil.decryptAES_DB(userVo.getMobile()))
-                request.setAttribute("userVo", user)
-                true
-            } else if (tokenType === "dosa") {
-                val dosaToken: DosaToken? = dosaTokenRepository.findAllByToken(token)
-                    if (dosaToken != null) {
-                        filterChain.doFilter(request, response)
-                    }
+                if(tokenUser == null ){
+                    filterChain.doFilter(request, response)
                 }
-                val dosa = dosaRepository.findAllByDosaId(token_id)
-                if (dosa == null || dosa.status === "delete") {
+                request.setAttribute("user", tokenUser)
+                true
+            } else if (tokenDecrypt.tokenType == "dosa") {
+
+                val tokenDosa : Dosa? = tokenService.dosaTokenCheck(tokenDecrypt);
+                log.info("dosa token check : " + tokenDecrypt)
+
+                if(tokenDosa == null) {
                     filterChain.doFilter(request, response)
                 }
                 // TODO Token 유효기간 재설정하는 부분 추가해야함
 
-//                val parameters: Map<String, Any> = expandTokenDosa(dosaVo.getSeq(), token)
-//                loginMapper.insertDosaToken(parameters)
-//                dosaVo.setMobile(CommonUtil.decryptAES_DB(dosaVo.getMobile()))
-                request.setAttribute("dosa", dosa)
-                true
+                request.setAttribute("dosa", tokenDosa)
             }
-
         filterChain.doFilter(request, response)
     }
-
-
-
 }

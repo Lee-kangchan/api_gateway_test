@@ -1,9 +1,10 @@
 package com.example.apt_gateway_test.config
 
 import com.example.apt_gateway_test.entity.Dosa
-import com.example.apt_gateway_test.entity.User
-import com.example.apt_gateway_test.filter.CustomFilter
-import com.example.apt_gateway_test.util.TokenUtil
+import com.example.apt_gateway_test.entity.Users
+import com.example.apt_gateway_test.filter.TokenCheckFilter
+import com.example.apt_gateway_test.service.TokenService
+import com.example.apt_gateway_test.util.CommonUtil
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
@@ -24,9 +25,11 @@ import javax.servlet.http.HttpServletResponse
 
 @Configuration
 @EnableWebSecurity
-class SecurityConfig(): WebSecurityConfigurerAdapter() {
+class SecurityConfig(
+    val tokenService: TokenService
+): WebSecurityConfigurerAdapter() {
     companion object {
-        val log = LoggerFactory.getLogger(CustomFilter::class.java) ?: throw IllegalStateException("log가 존재하지 않습니다!")
+        val log = LoggerFactory.getLogger(SecurityConfig::class.java) ?: throw IllegalStateException("log가 존재하지 않습니다!")
     }
     @Throws(Exception::class)
     override fun configure(http: HttpSecurity) {
@@ -43,39 +46,39 @@ class SecurityConfig(): WebSecurityConfigurerAdapter() {
             .antMatchers("**").permitAll()
             .anyRequest().authenticated()
             .and()
+            .addFilterBefore(TokenCheckFilter(tokenService), UsernamePasswordAuthenticationFilter::class.java)
             .addFilterBefore(TokenAuthentication(), UsernamePasswordAuthenticationFilter::class.java)
     }
 
     private class TokenAuthentication() : OncePerRequestFilter() {
 
+        companion object  {
+            val log = LoggerFactory.getLogger(TokenAuthentication::class.java) ?: throw IllegalStateException("log가 존재하지 않습니다!")
+        }
         @Throws(ServletException::class, IOException::class)
         override fun doFilterInternal(
             request: HttpServletRequest,
             response: HttpServletResponse,
             filterChain: FilterChain
         ) {
+            TokenCheckFilter.log.info("Security Check")
+            val user : Users? = CommonUtil.getAttrFromRequest("user") as Users?
+            val dosa : Dosa? = CommonUtil.getAttrFromRequest("dosa") as Dosa?
 
-            val token = request.getHeader("token")
-            if (token != null) {
-                val user : User? = TokenUtil.getAttrFromRequest("userVo") as User?
-                val dosa : Dosa? = TokenUtil.getAttrFromRequest("dosaVo") as Dosa?
-
-                val grantedList = ArrayList<SimpleGrantedAuthority>()
-                grantedList += SimpleGrantedAuthority("user");
-                try {
-                    if (user != null) {
-                        grantedList += SimpleGrantedAuthority("user");
-                    } else if (dosa != null) {
-                        grantedList += SimpleGrantedAuthority("dosa");
-                    }
-
-                    val authentication: Authentication =
-                        UsernamePasswordAuthenticationToken(null, null, grantedList)
-
-                    SecurityContextHolder.getContext().authentication = authentication
-                } catch (e: java.lang.Exception) {
-                    SecurityContextHolder.clearContext()
+            val grantedList = ArrayList<SimpleGrantedAuthority>()
+            try {
+                if (user != null) {
+                    grantedList += SimpleGrantedAuthority("user");
+                } else if (dosa != null) {
+                    grantedList += SimpleGrantedAuthority("dosa");
                 }
+
+                val authentication: Authentication =
+                    UsernamePasswordAuthenticationToken(null, null, grantedList)
+
+                SecurityContextHolder.getContext().authentication = authentication
+            } catch (e: java.lang.Exception) {
+                SecurityContextHolder.clearContext()
             }
             filterChain.doFilter(request, response)
         }
