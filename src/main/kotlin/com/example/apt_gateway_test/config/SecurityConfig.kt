@@ -4,6 +4,8 @@ import com.example.apt_gateway_test.entity.Dosa
 import com.example.apt_gateway_test.entity.Users
 import com.example.apt_gateway_test.filter.TokenCheckFilter
 import com.example.apt_gateway_test.service.TokenService
+import com.example.apt_gateway_test.util.CommonData.Companion.DOSA_ROLE
+import com.example.apt_gateway_test.util.CommonData.Companion.USER_ROLE
 import com.example.apt_gateway_test.util.CommonUtil
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Configuration
@@ -31,6 +33,7 @@ class SecurityConfig(
     companion object {
         val log = LoggerFactory.getLogger(SecurityConfig::class.java) ?: throw IllegalStateException("log가 존재하지 않습니다!")
     }
+
     @Throws(Exception::class)
     override fun configure(http: HttpSecurity) {
         http
@@ -49,38 +52,32 @@ class SecurityConfig(
             .addFilterBefore(TokenCheckFilter(tokenService), UsernamePasswordAuthenticationFilter::class.java)
             .addFilterBefore(TokenAuthentication(), UsernamePasswordAuthenticationFilter::class.java)
     }
+}
 
-    private class TokenAuthentication() : OncePerRequestFilter() {
+private class TokenAuthentication() : OncePerRequestFilter() {
+    @Throws(ServletException::class, IOException::class)
+    override fun doFilterInternal(
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        filterChain: FilterChain
+    ) {
 
-        companion object  {
-            val log = LoggerFactory.getLogger(TokenAuthentication::class.java) ?: throw IllegalStateException("log가 존재하지 않습니다!")
+        val user: Users? = CommonUtil.getAttrFromRequest(USER_ROLE) as Users?
+        val dosa: Dosa? = CommonUtil.getAttrFromRequest(DOSA_ROLE) as Dosa?
+
+        val grantedList = ArrayList<SimpleGrantedAuthority>().apply {
+            user?.let { add(SimpleGrantedAuthority(USER_ROLE)) }
+            dosa?.let { add(SimpleGrantedAuthority(DOSA_ROLE)) }
         }
-        @Throws(ServletException::class, IOException::class)
-        override fun doFilterInternal(
-            request: HttpServletRequest,
-            response: HttpServletResponse,
-            filterChain: FilterChain
-        ) {
-            TokenCheckFilter.log.info("Security Check")
-            val user : Users? = CommonUtil.getAttrFromRequest("user") as Users?
-            val dosa : Dosa? = CommonUtil.getAttrFromRequest("dosa") as Dosa?
 
-            val grantedList = ArrayList<SimpleGrantedAuthority>()
-            try {
-                if (user != null) {
-                    grantedList += SimpleGrantedAuthority("user");
-                } else if (dosa != null) {
-                    grantedList += SimpleGrantedAuthority("dosa");
-                }
+        try {
+            val authentication: Authentication = UsernamePasswordAuthenticationToken(null, null, grantedList)
 
-                val authentication: Authentication =
-                    UsernamePasswordAuthenticationToken(null, null, grantedList)
-
-                SecurityContextHolder.getContext().authentication = authentication
-            } catch (e: java.lang.Exception) {
-                SecurityContextHolder.clearContext()
-            }
-            filterChain.doFilter(request, response)
+            SecurityContextHolder.getContext().authentication = authentication
+        } catch (e: Exception) {
+            SecurityContextHolder.clearContext()
         }
+
+        filterChain.doFilter(request, response)
     }
 }
