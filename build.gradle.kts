@@ -74,6 +74,13 @@ tasks.withType<KotlinCompile> {
     }
 }
 
+tasks.jar {
+    manifest {
+        attributes(
+            "Main-Class" to "com.example.apt_gateway_test"
+        )
+    }
+}
 tasks.withType<Test> {
     useJUnitPlatform()
 }

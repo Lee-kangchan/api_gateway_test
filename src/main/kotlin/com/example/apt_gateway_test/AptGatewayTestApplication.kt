@@ -27,6 +27,14 @@ fun myRoutes(builder: RouteLocatorBuilder): RouteLocator? {
                         .filter(CustomFilter())
                 }
                 .uri("lb://USER-SERVICE")
+        }.route("dosa") { r ->
+            r.path("/user/**")
+                .filters { f ->
+                    f.removeRequestHeader("Cookie")
+                        .rewritePath("/dosa/(?<segment>.*)", "/\${segment}")
+                        .filter(CustomFilter())
+                }
+                .uri("lb://DOSA-SERVICE")
         }
         .build()
 }
